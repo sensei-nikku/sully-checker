@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Miracle on the Hudson — Answer Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F4F1EC;--surface:#FFF;--border:#D6D0C4;--text:#2C2A26;--muted:#7A756B;
+  --accent:#1B6B93;--accent-lt:#E8F1F5;--ok:#3A7D44;--ok-lt:#E6F2E8;
+  --warn:#C4841D;--warn-lt:#FDF3E4;--err:#B33A3A;--err-lt:#FBEAEA;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:#1A2332;color:#E8E4DD;padding:14px 20px;position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hdr-left h1{font-size:1.1rem;font-weight:600;letter-spacing:.02em}
+.hdr-left .sub{font-size:.72rem;color:#8A9BB0;margin-top:1px}
+.hdr-dots{display:flex;gap:6px;align-items:center}
+.qd{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;border:2px solid #3A4556;color:#3A4556;background:transparent;cursor:pointer;transition:all .2s;flex-shrink:0}
+.qd:hover{transform:scale(1.15)}
+.qd.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.qd.skip{background:var(--warn);border-color:var(--warn);color:#fff}
+.qd.active{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 3px rgba(27,107,147,.3)}
+.qd.locked{border-color:#2A3344;color:#2A3344;cursor:default;opacity:.4}
+.qd.locked:hover{transform:none}
+
+/* ── FLIGHT NAV ── */
+.fp{background:#1A2332;padding:0 20px 12px;position:sticky;top:58px;z-index:99}
+.fp-hint{font-size:.58rem;color:#5A6A7A;text-align:center;margin-bottom:6px;letter-spacing:.03em}
+.ft{display:flex;align-items:center}
+.fn{display:flex;flex-direction:column;align-items:center;z-index:2;flex-shrink:0;cursor:pointer;padding:4px 2px;border-radius:8px;transition:background .2s}
+.fn:hover{background:rgba(255,255,255,.06)}
+.fn .d{width:14px;height:14px;border-radius:50%;background:#3A4556;border:2px solid #3A4556;transition:.3s}
+.fn.a .d{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,107,147,.25)}
+.fn.c .d{background:var(--ok);border-color:var(--ok)}
+.fn.sk .d{background:var(--warn);border-color:var(--warn)}
+.fn:hover .d{transform:scale(1.25)}
+.fn .l{font-size:.5rem;color:#5A6A7A;margin-top:3px;white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+.fn.a .l,.fn.c .l{color:#B0BCC8}
+.fn.sk .l{color:#D4A84A}
+.fl{flex:1;height:2px;background:#3A4556;z-index:1}
+.fl.c{background:var(--ok)}
+
+/* ── MAIN ── */
+.main{max-width:720px;margin:0 auto;padding:16px 16px 40px}
+
+/* Stage headers */
+.sh{margin:20px 0 12px;padding:10px 16px;background:#1A2332;color:#E8E4DD;border-radius:10px;display:none}
+.sh.v{display:block}
+.sh h2{font-size:.9rem;font-weight:600}
+.sh p{font-size:.72rem;color:#8A9BB0;margin-top:2px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:14px;display:none}
+.card.v{display:block}
+.card.done{display:block;padding:10px 18px;background:var(--ok-lt);border-color:var(--ok)}
+.card.done .qn{margin-bottom:0;color:var(--ok)}
+.card.done .qp,.card.done .step,.card.done .fb,.card.done .result-box,.card.done .btn{display:none}
+.done-check{color:var(--ok);font-weight:600;font-size:.82rem;display:inline;margin-left:8px}
+.card.skipped{display:block;padding:10px 18px;background:var(--warn-lt);border-color:var(--warn);cursor:pointer}
+.card.skipped .qn{margin-bottom:0;color:var(--warn)}
+.card.skipped .qp,.card.skipped .step,.card.skipped .fb,.card.skipped .result-box,.card.skipped .btn{display:none}
+.skip-tag{color:var(--warn);font-weight:600;font-size:.82rem;display:inline;margin-left:8px}
+
+.qn{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.qp{font-size:1rem;font-weight:600;margin-bottom:18px;line-height:1.5}
+
+/* Steps */
+.step{display:none;margin-bottom:16px;animation:fadeIn .3s ease}
+.step.show{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.step-label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.step-text{font-size:.9rem;color:var(--text);margin-bottom:10px;line-height:1.55}
+
+/* Triangle fields */
+.tri-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:360px;margin-bottom:12px}
+.tri-field label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.tri-field input{
+  font-family:'JetBrains Mono',monospace;font-size:.95rem;padding:8px 12px;
+  border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);width:100%;transition:border-color .2s;
+}
+.tri-field input:focus{outline:none;border-color:var(--accent)}
+.tri-field input.field-err{border-color:var(--err);background:var(--err-lt)}
+
+/* Ratio buttons */
+.ratio-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ratio-btn{
+  font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:600;
+  padding:12px 24px;border:2px solid var(--accent);border-radius:8px;
+  background:var(--accent-lt);color:var(--accent);cursor:pointer;transition:.2s;min-width:80px;text-align:center;
+}
+.ratio-btn:hover{background:var(--accent);color:#fff}
+.ratio-btn.inv{border-color:#6B4C9A;background:#F3EFF8;color:#6B4C9A}
+.ratio-btn.inv:hover{background:#6B4C9A;color:#fff}
+
+/* Hint */
+.btn-hint{background:transparent;color:var(--warn);border:1.5px solid var(--warn);font-size:.8rem;padding:6px 14px;cursor:pointer;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:600;transition:.2s}
+.btn-hint:hover{background:var(--warn-lt)}
+.hint-text{background:var(--warn-lt);border-left:3px solid var(--warn);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:.9rem;color:var(--text);line-height:1.55;font-style:italic;animation:fadeIn .3s ease}
+
+/* Buttons */
+.btn{font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;padding:9px 18px;border:none;border-radius:8px;cursor:pointer;transition:.2s}
+.btn-go{background:var(--accent);color:#fff}
+.btn-go:hover{background:#155A7A}
+.btn-next{background:var(--ok);color:#fff}
+.btn-next:hover{background:#2E6B37}
+.btn-reset{background:transparent;color:var(--err);border:1.5px solid var(--err);font-size:.8rem;padding:6px 14px;cursor:pointer}
+.btn-reset:hover{background:var(--err-lt)}
+
+/* Select */
+select{font-family:'DM Sans',sans-serif;font-size:.92rem;padding:9px 12px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer}
+select.s-ok{border-color:var(--ok);background:var(--ok-lt)}
+select.s-err{border-color:var(--err);background:var(--err-lt)}
+
+/* Feedback */
+.fb{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:.88rem;font-weight:500;display:none;line-height:1.5}
+.fb.show{display:block}
+.fb.ok{background:var(--ok-lt);color:var(--ok)}
+.fb.warn{background:var(--warn-lt);color:var(--warn)}
+.fb.err{background:var(--err-lt);color:var(--err)}
+
+/* Result box */
+.result-box{background:#F0F7FA;border:2px solid var(--accent);border-radius:10px;padding:16px 20px;margin-top:12px}
+.result-eq{font-family:'JetBrains Mono',monospace;font-size:1rem;color:var(--accent);font-weight:600;margin-bottom:4px}
+.result-val{font-family:'JetBrains Mono',monospace;font-size:1.3rem;color:var(--ok);font-weight:700}
+
+/* Calc row */
+.calc-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.calc-row input{
+  font-family:'JetBrains Mono',monospace;font-size:1rem;padding:10px 14px;
+  border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);width:160px;transition:border-color .2s;
+}
+.calc-row input:focus{outline:none;border-color:var(--accent)}
+.calc-row input.c-ok{border-color:var(--ok);background:var(--ok-lt)}
+.calc-row input.c-warn{border-color:var(--warn);background:var(--warn-lt)}
+.calc-row input.c-err{border-color:var(--err);background:var(--err-lt)}
+
+@media(max-width:600px){
+  .hdr{padding:10px 12px;flex-wrap:wrap;gap:8px}
+  .hdr-dots{gap:4px}
+  .qd{width:24px;height:24px;font-size:.6rem}
+  .fp{padding:0 12px 10px}
+  .main{padding:12px 10px 40px}
+  .card{padding:18px 14px}
+  .fn .l{font-size:.42rem}
+  .tri-grid{gap:8px}
+  .calc-row input{width:120px}
+}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-left"><h1>Miracle on the Hudson</h1><div class="sub">Trig Project &mdash; Answer Checker</div></div>
+  <div class="hdr-dots" id="hdrDots"></div>
+</header>
+<div class="fp"><div class="fp-hint">Tap a point to jump between questions</div><div class="ft" id="ft"></div></div>
+<main class="main" id="main"></main>
+
+<script>
+var NODES = ['Takeoff','Bird Strike','Max Alt','Decision','GW Bridge','Landing'];
+var NODE_Q_MAP = [0, 0, 1, 2, 4, 6];
+
+var STAGES = [
+  {t:'Stage 1 \u2014 The Ascent', d:'LaGuardia \u2192 Bird Strike \u2192 Max Altitude'},
+  {t:'Stage 2 \u2014 The Descent', d:'Max Altitude \u2192 Decision Point'},
+  {t:'Stage 3 \u2014 The Approach', d:'GW Bridge \u2192 Hudson River Landing'}
+];
+
+var QS = [
+  {id:'q1', stage:0, num:'Q1', type:'trig', unitType:'length',
+    prompt:'Calculate the plane\'s height above the ground when it hit the birds.',
+    context:'The plane was ascending at an angle of 7.7\u00B0 and had traveled 4 miles along its flight path when it struck the birds.',
+    sketch:'The plane\'s path is the hypotenuse. The ground is the adjacent side. The height is the opposite side. The 7.7\u00B0 angle is at the ground.',
+    expected:{x:'opp', angle:[7.5,7.9], hyp:[[3.8,4.2],[20900,21400]], adj:null, opp:null, ratios:['sin']}},
+  {id:'q2', stage:0, num:'Q2', type:'trig', unitType:'length',
+    prompt:'How far could the plane travel during the 19-second climb to max altitude?',
+    context:'After the bird strike, the plane continued to climb at 2\u00B0 and reached a maximum altitude of 3,060 feet.',
+    sketch:'First: subtract your Q1 answer from 3,060 to find how much higher the plane climbed. That extra altitude is the opposite side. The 2\u00B0 angle is at the base. The distance traveled is the hypotenuse \u2014 that\'s your unknown.',
+    expected:{x:'hyp', angle:[1.8,2.2], opp:[[150,320]], adj:null, hyp:null, ratios:['sin']}},
+  {id:'q3', stage:1, num:'Q3', type:'select',
+    prompt:'The plane dropped 1,390 feet while covering 0.5 miles horizontally. Was the actual distance traveled greater than, less than, or equal to 0.5 miles?',
+    hint:'The horizontal distance is one leg of the right triangle. The actual flight path is the hypotenuse. In any right triangle, which side is always the longest?',
+    options:['Choose one...','Greater than 0.5 miles','Less than 0.5 miles','Equal to 0.5 miles'], correct:'Greater than 0.5 miles'},
+  {id:'q4', stage:1, num:'Q4', type:'select',
+    prompt:'How do you know?',
+    hint:'Think about the relationship between the hypotenuse and the legs in any right triangle.',
+    options:['Choose one...','The hypotenuse is always longer than either leg','The angle was steep so it went farther','The plane was moving fast'], correct:'The hypotenuse is always longer than either leg'},
+  {id:'q5', stage:1, num:'Q5', type:'trig', unitType:'degrees',
+    prompt:'At what angle did the plane descend?',
+    context:'The plane dropped 1,390 feet. The horizontal distance covered was 0.5 miles.',
+    sketch:'The altitude drop (1,390 ft) is the opposite side. The horizontal distance is the adjacent side \u2014 convert 0.5 miles to feet first! The descent angle is what you\'re solving for.',
+    expected:{x:'angle', opp:[[1380,1400]], adj:[[2620,2680]], hyp:null, angle:null, ratios:['tan']}},
+  {id:'q6', stage:2, num:'Q6', type:'trig', unitType:'length',
+    prompt:'The airplane leveled off at a 3\u00B0 descent angle for the next two miles. How many feet did it drop in altitude?',
+    context:'Descent angle is 3\u00B0. Horizontal distance is 2 miles.',
+    sketch:'The horizontal distance is the adjacent side \u2014 convert to feet! The altitude drop is the opposite side (your unknown). The 3\u00B0 angle is the descent angle.',
+    expected:{x:'opp', angle:[2.8,3.2], adj:[[1.8,2.2],[10400,10700]], hyp:null, opp:null, ratios:['tan']}},
+  {id:'q7', stage:2, num:'Q7', type:'trig', unitType:'length',
+    prompt:'The GW Bridge is 6 miles from where the plane landed. How high was the plane when it passed over the bridge?',
+    context:'The plane descended at 2\u00B0 from the GW Bridge to its landing on the Hudson (altitude = 0 ft). Horizontal distance: 6 miles.',
+    sketch:'Work backwards from landing. The horizontal distance (6 miles) is the adjacent side \u2014 convert to feet! The height at the bridge is the opposite side (your unknown). The 2\u00B0 descent angle connects them.',
+    expected:{x:'opp', angle:[1.8,2.2], adj:[[5.8,6.2],[31400,32000]], hyp:null, opp:null, ratios:['tan']}},
+  {id:'q8', stage:2, num:'Q8', type:'clearance',
+    prompt:'The George Washington Bridge is 212 feet tall. By how many feet did the plane clear the bridge?',
+    hint:'Clearance = (your Q7 answer) \u2212 212 feet.',
+    bridgeHeight:212, atcReport:900}
+];
+
+// ── STATE ──
+var S = {};
+var activeQ = 0;
+
+function init() {
+  S = {};
+  for (var i = 0; i < QS.length; i++) {
+    var q = QS[i];
+    S[q.id] = {step:0, ratioOk:false, correct:false, dismissed:false, skipped:false, value:'', hintsUsed:[], hintsShown:{}};
+    if (q.type === 'trig') {
+      S[q.id].fields = {opp:'',adj:'',hyp:'',angle:''};
+      S[q.id].ratio = '';
+      S[q.id].inverse = false;
+      S[q.id].result = null;
+      S[q.id].calcValue = '';
+      S[q.id].calcUnit = '';
+      S[q.id].calcFeedback = '';
+    }
+    if (q.type === 'clearance') {
+      S[q.id].calcValue = '';
+      S[q.id].calcFeedback = '';
+    }
+  }
+  activeQ = 0;
+}
+
+// ── PROGRESSION ──
+function stageOk(st) {
+  if (st === 0) return true;
+  for (var i = 0; i < QS.length; i++) { if (QS[i].stage === st-1 && !S[QS[i].id].dismissed) return false; }
+  return true;
+}
+function qUnlocked(qi) {
+  var q = QS[qi];
+  if (!stageOk(q.stage)) return false;
+  if (qi === 0) return true;
+  var p = QS[qi-1];
+  if (p.stage !== q.stage) return true;
+  return S[p.id].dismissed;
+}
+function stageDone(st) {
+  for (var i = 0; i < QS.length; i++) { if (QS[i].stage === st && !S[QS[i].id].dismissed) return false; }
+  return true;
+}
+
+// ── HELPERS ──
+function inRange(v,ranges) {
+  if (!ranges) return true;
+  for (var i=0;i<ranges.length;i++){var r=ranges[i];if(Array.isArray(r)&&v>=r[0]&&v<=r[1])return true;}
+  return false;
+}
+function fmt(n) {
+  if (Math.abs(n)>=100) return Math.round(n).toLocaleString();
+  if (Math.abs(n)>=10) return n.toFixed(1);
+  return n.toFixed(4);
+}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function copyObj(o){return JSON.parse(JSON.stringify(o));}
+function detectUnit(q,s){
+  if(q.unitType==='degrees')return 'degrees';
+  var fk=['opp','adj','hyp'],nv=[];
+  for(var i=0;i<fk.length;i++){var tv=(s.fields[fk[i]]||'').toString().trim();if(tv.toLowerCase()==='x'||!tv)continue;var n=parseFloat(tv);if(!isNaN(n))nv.push(n);}
+  var small=true;for(var i=0;i<nv.length;i++){if(nv[i]>=100){small=false;break;}}
+  return(nv.length>0&&small)?'miles':'feet';
+}
+
+// ── ACTIONS ──
+function navTo(qi) {
+  if(qi<0||qi>=QS.length||!qUnlocked(qi))return;
+  if(qi>activeQ){for(var j=activeQ;j<qi;j++){if(qUnlocked(j)&&!S[QS[j].id].dismissed&&!S[QS[j].id].correct)S[QS[j].id].skipped=true;}}
+  S[QS[qi].id].skipped=false;
+  activeQ=qi;render();window.scrollTo({top:0,behavior:'smooth'});
+}
+function advStep(id){S[id].step++;render();}
+function dismissQ(id){
+  S[id].dismissed=true;S[id].skipped=false;
+  var qi=-1;for(var i=0;i<QS.length;i++){if(QS[i].id===id){qi=i;break;}}
+  if(qi<QS.length-1){activeQ=qi+1;}
+  render();window.scrollTo({top:0,behavior:'smooth'});
+}
+function showHint(id,hid){
+  S[id].hintsShown[hid]=true;
+  if(S[id].hintsUsed.indexOf(hid)===-1)S[id].hintsUsed.push(hid);
+  render();
+}
+function updField(id,k,v){S[id].fields[k]=v;S[id].result=null;S[id].ratioOk=false;}
+function selAns(id,v){S[id].value=v;S[id].correct=false;render();}
+function chkSel(id){
+  var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
+  S[id].correct=(S[id].value===q.correct);render();
+}
+function updCalc(id,val){S[id].calcValue=val;S[id].calcFeedback='';}
+function updCalcUnit(id,val){S[id].calcUnit=val;S[id].calcFeedback='';}
+
+function clickRatio(id,ratio,inverse){
+  var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
+  var s=S[id],f=s.fields,ex=q.expected;
+  var xField=null,xCount=0,fk=['opp','adj','hyp','angle'];
+  for(var i=0;i<fk.length;i++){if((f[fk[i]]||'').toString().toLowerCase().trim()==='x'){xField=fk[i];xCount++;}}
+  if(xCount!==1){s.result={error:'Mark exactly one field as "x" \u2014 the value you are solving for.'};render();return;}
+  if(xField!==ex.x){s.result={error:'Think about what the question is asking you to find. Which measurement is the unknown?'};render();return;}
+  if(xField==='angle'&&!inverse){s.result={error:'You\'re solving for an angle. When you know the sides and need the angle, you need an inverse trig function.'};render();return;}
+  if(xField!=='angle'&&inverse){s.result={error:'You\'re solving for a side, not an angle. Use a regular trig ratio (SIN, COS, or TAN) instead of an inverse.'};render();return;}
+  var errs={},names={opp:'Opposite',adj:'Adjacent',hyp:'Hypotenuse',angle:'Angle'};
+  for(var i=0;i<fk.length;i++){var k=fk[i];if(k===xField)continue;var tv=(f[k]||'').toString().trim();if(!tv)continue;var n=parseFloat(tv);if(isNaN(n)){errs[k]=true;continue;}var expected=(k==='angle')?(ex.angle?[ex.angle]:null):ex[k];if(expected&&!inRange(n,expected))errs[k]=true;}
+  if(Object.keys(errs).length>0){var bad=Object.keys(errs).map(function(k){return names[k];}).join(', ');s.result={error:'Check your value for: '+bad+'. Re-read the problem and review your diagram.',ef:errs};render();return;}
+  if(ex.ratios.indexOf(ratio)===-1){s.result={error:'That ratio does not connect your angle to the unknown. Think: SOH-CAH-TOA. Which ratio uses the sides you have?'};render();return;}
+  var vals={};for(var i=0;i<fk.length;i++){var k=fk[i];var tv=(f[k]||'').trim();if(tv.toLowerCase()==='x'||!tv)continue;vals[k]=parseFloat(tv);}
+  var rad=function(d){return d*Math.PI/180;};var ans=null;
+  if(xField==='opp'){if(ratio==='sin')ans=vals.hyp*Math.sin(rad(vals.angle));if(ratio==='tan')ans=vals.adj*Math.tan(rad(vals.angle));}
+  if(xField==='adj'){if(ratio==='cos')ans=vals.hyp*Math.cos(rad(vals.angle));if(ratio==='tan')ans=vals.opp/Math.tan(rad(vals.angle));}
+  if(xField==='hyp'){if(ratio==='sin')ans=vals.opp/Math.sin(rad(vals.angle));if(ratio==='cos')ans=vals.adj/Math.cos(rad(vals.angle));}
+  if(xField==='angle'){if(ratio==='sin')ans=Math.asin(vals.opp/vals.hyp)*180/Math.PI;if(ratio==='cos')ans=Math.acos(vals.adj/vals.hyp)*180/Math.PI;if(ratio==='tan')ans=Math.atan(vals.opp/vals.adj)*180/Math.PI;}
+  if(ans===null||isNaN(ans)){s.result={error:'Something went wrong. Check your values.'};render();return;}
+  var rm={sin:['opp','hyp'],cos:['adj','hyp'],tan:['opp','adj']};var parts=rm[ratio];var eq='';
+  if(xField==='angle'){eq=ratio+'\u207B\u00B9( '+vals[parts[0]]+' / '+vals[parts[1]]+' ) = ?';}
+  else if(xField===parts[0]){eq=ratio+'('+vals.angle+'\u00B0) \u00D7 '+vals[parts[1]]+' = ?';}
+  else if(xField===parts[1]){eq=vals[parts[0]]+' / '+ratio+'('+vals.angle+'\u00B0) = ?';}
+  s.ratio=ratio;s.inverse=inverse;s.result={answer:ans,equation:eq};s.ratioOk=true;s.calcValue='';s.calcUnit='';s.calcFeedback='';render();
+}
+
+function checkCalc(id){
+  var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
+  var s=S[id];var typed=parseFloat(s.calcValue);
+  if(isNaN(typed)){s.calcFeedback='err:Enter a number.';render();return;}
+  var computed=s.result.answer;var computedUnit=detectUnit(q,s);
+  var studentVal=typed;
+  if(q.unitType==='length'){
+    var su=s.calcUnit||'feet';
+    if(computedUnit==='feet'&&su==='miles')studentVal=typed*5280;
+    if(computedUnit==='miles'&&su==='feet')studentVal=typed/5280;
+  }
+  var diff=Math.abs(studentVal-computed);var pct=(computed!==0)?(diff/Math.abs(computed))*100:diff;
+  if(pct<=2){s.correct=true;s.calcFeedback='ok';}
+  else if(pct<=8){s.calcFeedback='warn:Close! Double-check your rounding or make sure your calculator is in degree mode.';}
+  else{s.calcFeedback='err:That\'s not matching. Re-enter the equation in your calculator carefully. If you\'re stuck, bring your work to your teacher.';}
+  render();
+}
+
+function resetQ(id){
+  var hu=S[id].hintsUsed;
+  S[id]={step:1,ratioOk:false,correct:false,dismissed:false,skipped:false,value:'',hintsUsed:hu,hintsShown:{},
+    fields:{opp:'',adj:'',hyp:'',angle:''},ratio:'',inverse:false,result:null,calcValue:'',calcUnit:'',calcFeedback:''};
+  render();
+}
+
+function updClearance(id,val){S[id].calcValue=val;S[id].calcFeedback='';}
+
+function checkClearance(id){
+  var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
+  var s=S[id];var typed=parseFloat(s.calcValue);
+  if(isNaN(typed)){s.calcFeedback='err:Enter a number.';render();return;}
+  if(typed>=750&&typed<=1050){s.correct=true;s.calcFeedback='ok';}
+  else if(typed>=600&&typed<=1200){s.calcFeedback='warn:That\'s in the neighborhood but seems off. Clearance = (height at bridge) \u2212 212. Double-check your subtraction.';}
+  else{s.calcFeedback='err:That doesn\'t seem right. Clearance = (your Q7 answer) \u2212 212 feet. Try again, or bring your work to your teacher.';}
+  render();
+}
+
+// ── RENDER ──
+function render(){
+  var m=document.getElementById('main');m.innerHTML='';
+  var cs=-1;
+  for(var qi=0;qi<QS.length;qi++){
+    var q=QS[qi];
+    if(q.stage!==cs){
+      cs=q.stage;
+      if(stageDone(q.stage)){while(qi<QS.length-1&&QS[qi+1].stage===q.stage)qi++;continue;}
+      if(stageOk(q.stage)){var sh=document.createElement('div');sh.className='sh v';sh.innerHTML='<h2>'+STAGES[q.stage].t+'</h2><p>'+STAGES[q.stage].d+'</p>';m.appendChild(sh);}
+    }
+    var s=S[q.id];var card=document.createElement('div');
+    if(s.dismissed){
+      card.className='card done';card.id='c-'+q.id;
+      card.innerHTML='<div class="qn">'+q.num+'<span class="done-check">\u2713 Complete</span></div>';
+    }else if(s.skipped&&qi!==activeQ){
+      card.className='card skipped';card.id='c-'+q.id;
+      card.innerHTML='<div class="qn">'+q.num+'<span class="skip-tag">\u25CB Skipped \u2014 tap to return</span></div>';
+      (function(idx){card.addEventListener('click',function(){navTo(idx);});})(qi);
+    }else if(qi===activeQ&&qUnlocked(qi)){
+      card.className='card v';card.id='c-'+q.id;
+      var h='<div class="qn">'+q.num+'</div><div class="qp">'+q.prompt+'</div>';
+      if(q.type==='trig')h+=renderTrig(q,s,qi);
+      else if(q.type==='clearance')h+=renderClearance(q,s,qi);
+      else h+=renderSel(q,s,qi);
+      card.innerHTML=h;
+    }else{continue;}
+    m.appendChild(card);
+  }
+  renderTrack();renderDots();
+}
+
+function renderTrig(q,s,qi){
+  var h='';
+  // Step 1
+  h+='<div class="step show"><div class="step-label">Step 1 \u2014 Identify the Triangle</div><div class="step-text">'+q.context+'</div>';
+  if(s.hintsShown.sketch){h+='<div class="hint-text">'+q.sketch+'</div>';}
+  else if(!s.ratioOk&&!s.correct){h+='<button class="btn-hint" onclick="showHint(\''+q.id+'\',\'sketch\')">Need a hint?</button><br><br>';}
+  if(s.step===0&&!s.correct){h+='<button class="btn btn-go" onclick="advStep(\''+q.id+'\')">I\'ve sketched my triangle \u2192</button>';}
+  h+='</div>';
+  // Step 2
+  if(s.step>=1){
+    var ef=(s.result&&s.result.ef)||{};
+    h+='<div class="step show"><div class="step-label">Step 2 \u2014 Label What You Know</div><div class="step-text">Fill in the value for each part you know. Put <strong>x</strong> for the unknown. Leave unused fields blank.</div><div class="tri-grid">';
+    var fk=['opp','adj','hyp','angle'],fn={opp:'Opposite',adj:'Adjacent',hyp:'Hypotenuse',angle:'Angle'};
+    for(var i=0;i<fk.length;i++){var k=fk[i];h+='<div class="tri-field"><label>'+fn[k]+'</label><input type="text" value="'+esc(s.fields[k])+'" oninput="updField(\''+q.id+'\',\''+k+'\',this.value)" class="'+(ef[k]?'field-err':'')+'" '+((s.ratioOk||s.correct)?'readonly ':'')+' placeholder="value or x"></div>';}
+    h+='</div>';
+    if(s.step===1&&!s.ratioOk&&!s.correct){h+='<button class="btn btn-go" onclick="advStep(\''+q.id+'\')">I\'ve labeled my triangle \u2192</button>';}
+    h+='</div>';
+  }
+  // Step 3
+  if(s.step>=2&&!s.ratioOk&&!s.correct){
+    h+='<div class="step show"><div class="step-label">Step 3 \u2014 Choose Your Ratio</div><div class="step-text">Which trig ratio connects your angle to the sides you labeled?</div><div class="ratio-row">';
+    h+='<button class="ratio-btn" onclick="clickRatio(\''+q.id+'\',\'sin\',false)">SIN</button>';
+    h+='<button class="ratio-btn" onclick="clickRatio(\''+q.id+'\',\'cos\',false)">COS</button>';
+    h+='<button class="ratio-btn" onclick="clickRatio(\''+q.id+'\',\'tan\',false)">TAN</button>';
+    h+='</div><div class="ratio-row">';
+    h+='<button class="ratio-btn inv" onclick="clickRatio(\''+q.id+'\',\'sin\',true)">SIN\u207B\u00B9</button>';
+    h+='<button class="ratio-btn inv" onclick="clickRatio(\''+q.id+'\',\'cos\',true)">COS\u207B\u00B9</button>';
+    h+='<button class="ratio-btn inv" onclick="clickRatio(\''+q.id+'\',\'tan\',true)">TAN\u207B\u00B9</button>';
+    h+='</div></div>';
+  }
+  // Ratio error
+  if(s.result&&s.result.error&&!s.ratioOk&&!s.correct){
+    h+='<div class="fb err show">\u26A0 '+s.result.error+'<br><br><strong>Bring your work to your teacher for help.</strong></div>';
+    h+='<div style="margin-top:10px"><button class="btn btn-reset" onclick="resetQ(\''+q.id+'\')">\u21BA Start Over</button></div>';
+  }
+  // Step 4 - calculator
+  if(s.ratioOk&&!s.correct){
+    h+='<div class="step show"><div class="step-label">Step 4 \u2014 Solve with Your Calculator</div>';
+    h+='<div class="result-box"><div class="result-eq">'+s.result.equation+'</div></div>';
+    h+='<div class="step-text" style="margin-top:12px">Type this into your calculator and enter your answer:</div>';
+    h+='<div class="calc-row">';
+    var cfClass='';if(s.calcFeedback){if(s.calcFeedback==='ok')cfClass=' c-ok';else if(s.calcFeedback.indexOf('warn:')===0)cfClass=' c-warn';else if(s.calcFeedback.indexOf('err:')===0)cfClass=' c-err';}
+    h+='<input type="text" inputmode="decimal" value="'+esc(s.calcValue)+'" placeholder="Your answer" oninput="updCalc(\''+q.id+'\',this.value)" class="'+cfClass.trim()+'">';
+    if(q.unitType==='length'){h+='<select onchange="updCalcUnit(\''+q.id+'\',this.value)"><option value="feet"'+(s.calcUnit==='feet'||!s.calcUnit?' selected':'')+'>feet</option><option value="miles"'+(s.calcUnit==='miles'?' selected':'')+'>miles</option></select>';}
+    else{h+='<span style="font-size:.85rem;color:var(--muted);font-weight:500">degrees</span>';}
+    h+='<button class="btn btn-go" onclick="checkCalc(\''+q.id+'\')">Check</button></div>';
+    if(s.calcFeedback&&s.calcFeedback!=='ok'){var fbType=s.calcFeedback.indexOf('warn:')===0?'warn':'err';var fbMsg=s.calcFeedback.split(':').slice(1).join(':');h+='<div class="fb '+fbType+' show" style="margin-top:10px">'+fbMsg+'</div>';}
+    h+='</div>';
+  }
+  // Success
+  if(s.correct){
+    var du=detectUnit(q,s);var doneEq=s.result.equation.replace('= ?','= '+fmt(s.result.answer)+' '+du);
+    h+='<div class="step show"><div class="result-box"><div class="result-eq">'+doneEq+'</div><div class="result-val">\u2713 '+s.calcValue+' '+(s.calcUnit||du)+'</div></div>';
+    h+='<div class="fb ok show" style="margin-top:12px">\u2713 Nice work! Your setup and calculation are correct.</div>';
+    h+='<div style="margin-top:10px"><button class="btn btn-next" onclick="dismissQ(\''+q.id+'\')">'+(qi<QS.length-1?'Continue':'Finish')+' \u2192</button></div></div>';
+  }
+  return h;
+}
+
+function renderSel(q,s,qi){
+  var h='<div class="step show">';
+  if(s.hintsShown.hint){h+='<div class="hint-text" style="margin-bottom:12px">'+q.hint+'</div>';}
+  else if(!s.correct){h+='<div style="margin-bottom:12px"><button class="btn-hint" onclick="showHint(\''+q.id+'\',\'hint\')">Need a hint?</button></div>';}
+  h+='<select onchange="selAns(\''+q.id+'\',this.value)" class="'+(s.correct?'s-ok':(s.value&&s.value!==q.options[0]&&!s.correct?'s-err':''))+'">';
+  for(var i=0;i<q.options.length;i++){var o=q.options[i];h+='<option value="'+esc(o)+'" '+(s.value===o?'selected':'')+'>'+o+'</option>';}
+  h+='</select>';
+  if(!s.correct){h+='<div style="margin-top:10px"><button class="btn btn-go" onclick="chkSel(\''+q.id+'\')">Check</button></div>';}
+  if(s.correct){h+='<div class="fb ok show" style="margin-top:10px">\u2713 That\'s right!</div><div style="margin-top:10px"><button class="btn btn-next" onclick="dismissQ(\''+q.id+'\')">Continue \u2192</button></div>';}
+  else if(s.value&&s.value!==q.options[0]){h+='<div class="fb err show" style="margin-top:10px">Not quite \u2014 try again.</div>';}
+  h+='</div>';return h;
+}
+
+function renderClearance(q,s,qi){
+  var h='<div class="step show">';
+  h+='<div class="step-text">Air traffic controllers reported seeing the plane clear the George Washington Bridge by less than 900 feet. The bridge is '+q.bridgeHeight+' feet tall.</div>';
+  if(s.hintsShown.hint){h+='<div class="hint-text">'+q.hint+'</div>';}
+  else if(!s.correct){h+='<div style="margin-bottom:12px"><button class="btn-hint" onclick="showHint(\''+q.id+'\',\'hint\')">Need a hint?</button></div>';}
+  if(!s.correct){
+    h+='<div class="step-text" style="font-weight:600">How many feet of clearance did the plane have above the bridge?</div>';
+    h+='<div class="calc-row">';
+    var cfClass='';if(s.calcFeedback){if(s.calcFeedback==='ok')cfClass=' c-ok';else if(s.calcFeedback.indexOf('warn:')===0)cfClass=' c-warn';else if(s.calcFeedback.indexOf('err:')===0)cfClass=' c-err';}
+    h+='<input type="text" inputmode="decimal" value="'+esc(s.calcValue)+'" placeholder="Clearance in feet" oninput="updClearance(\''+q.id+'\',this.value)" class="'+cfClass.trim()+'">';
+    h+='<span style="font-size:.85rem;color:var(--muted);font-weight:500">feet</span>';
+    h+='<button class="btn btn-go" onclick="checkClearance(\''+q.id+'\')">Check</button></div>';
+    if(s.calcFeedback&&s.calcFeedback!=='ok'){var fbType=s.calcFeedback.indexOf('warn:')===0?'warn':'err';var fbMsg=s.calcFeedback.split(':').slice(1).join(':');h+='<div class="fb '+fbType+' show" style="margin-top:10px">'+fbMsg+'</div>';}
+  }
+  if(s.correct){
+    var val=parseFloat(s.calcValue);
+    h+='<div class="result-box" style="margin-top:12px"><div class="result-eq">Plane height at bridge \u2212 Bridge height = Clearance</div><div class="result-val">\u2248 '+Math.round(val)+' feet of clearance</div></div>';
+    if(val<q.atcReport){h+='<div class="fb ok show" style="margin-top:12px">\u2713 Your answer confirms the controllers\' report \u2014 the plane cleared the bridge by less than '+q.atcReport+' feet. An incredibly tight margin.</div>';}
+    else{h+='<div class="fb warn show" style="margin-top:12px">Your answer of '+Math.round(val)+' feet is right at the '+q.atcReport+'-foot mark. Due to rounding, the actual clearance was likely just under '+q.atcReport+' feet \u2014 confirming the controllers\' report. Either way, an incredibly tight margin.</div>';}
+    // Flight path summary
+    h+='<div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">';
+    h+='<div style="font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Your Flight Path Summary</div>';
+    var sm=[{id:'q1',label:'Height at bird strike'},{id:'q2',label:'Distance climbed to max altitude'},{id:'q5',label:'Descent angle'},{id:'q6',label:'Altitude drop during 3\u00B0 descent'},{id:'q7',label:'Height at GW Bridge'}];
+    for(var i=0;i<sm.length;i++){var ss=S[sm[i].id];if(ss&&ss.correct&&ss.result&&ss.result.answer!==undefined){var sq=null;for(var j=0;j<QS.length;j++){if(QS[j].id===sm[i].id){sq=QS[j];break;}}var du=sq?detectUnit(sq,ss):'feet';h+='<div style="font-size:.88rem;padding:3px 0;color:var(--text)">'+sm[i].label+': <strong>'+fmt(ss.result.answer)+' '+du+'</strong></div>';}}
+    h+='</div>';
+    h+='<div style="margin-top:12px"><button class="btn btn-next" onclick="dismissQ(\''+q.id+'\')">Finish \u2192</button></div>';
+  }
+  h+='</div>';return h;
+}
+
+// ── HEADER DOTS ──
+function renderDots(){
+  var c=document.getElementById('hdrDots');c.innerHTML='';
+  for(var i=0;i<QS.length;i++){
+    var q=QS[i],s=S[q.id];
+    var dot=document.createElement('div');dot.className='qd';
+    if(s.dismissed){dot.classList.add('done');}
+    else if(s.skipped){dot.classList.add('skip');}
+    else if(i===activeQ){dot.classList.add('active');}
+    else if(!qUnlocked(i)){dot.classList.add('locked');}
+    dot.textContent=(i+1);
+    (function(idx){dot.addEventListener('click',function(){if(qUnlocked(idx))navTo(idx);});})(i);
+    c.appendChild(dot);
+  }
+}
+
+// ── FLIGHT TRACK ──
+function renderTrack(){
+  var t=document.getElementById('ft');t.innerHTML='';
+  var done=0;for(var i=0;i<QS.length;i++){if(S[QS[i].id].dismissed)done++;}
+  var ai=Math.min(Math.floor(done*NODES.length/QS.length),NODES.length-1);
+  var nodeSkipped=[];
+  for(var i=0;i<NODES.length;i++){var startQ=NODE_Q_MAP[i];var endQ=(i<NODES.length-1)?NODE_Q_MAP[i+1]:QS.length;var hs=false;for(var j=startQ;j<endQ;j++){if(S[QS[j].id].skipped){hs=true;break;}}nodeSkipped.push(hs);}
+  for(var i=0;i<NODES.length;i++){
+    if(i>0){var ln=document.createElement('div');ln.className='fl'+(i<=ai?' c':'');t.appendChild(ln);}
+    var n=document.createElement('div');var cls='fn';if(i<ai)cls+=' c';else if(i===ai)cls+=' a';if(nodeSkipped[i])cls+=' sk';n.className=cls;
+    n.innerHTML='<div class="d"></div><div class="l">'+NODES[i]+'</div>';
+    (function(idx){n.addEventListener('click',function(){var tq=NODE_Q_MAP[idx];for(var j=tq;j<QS.length;j++){if(qUnlocked(j)&&!S[QS[j].id].dismissed){navTo(j);return;}}for(var j=tq;j>=0;j--){if(qUnlocked(j)){navTo(j);return;}}});})(i);
+    t.appendChild(n);
+  }
+}
+
+// ── INIT ──
+init();
+for(var i=0;i<QS.length;i++){if(!S[QS[i].id].dismissed&&qUnlocked(i)){activeQ=i;break;}}
+render();
+</script>
+</body>
+</html>
