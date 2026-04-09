@@ -160,8 +160,8 @@ select.s-err{border-color:var(--err);background:var(--err-lt)}
 <main class="main" id="main"></main>
 
 <script>
-var NODES = ['Takeoff','Bird Strike','Max Alt','Decision','GW Bridge','Landing'];
-var NODE_Q_MAP = [0, 0, 1, 2, 4, 6];
+var NODES = ['Bird Strike','Max Alt','Decision','GW Bridge','Landing'];
+var NODE_Q_MAP = [0, 1, 2, 4, 6];
 
 var STAGES = [
   {t:'Stage 1 \u2014 The Ascent', d:'LaGuardia \u2192 Bird Strike \u2192 Max Altitude'},
@@ -183,11 +183,11 @@ var QS = [
   {id:'q3', stage:1, num:'Q3', type:'select',
     prompt:'The plane dropped 1,390 feet while covering 0.5 miles horizontally. Was the actual distance traveled greater than, less than, or equal to 0.5 miles?',
     hint:'The horizontal distance is one leg of the right triangle. The actual flight path is the hypotenuse. In any right triangle, which side is always the longest?',
-    options:['Choose one...','Greater than 0.5 miles','Less than 0.5 miles','Equal to 0.5 miles'], correct:'Greater than 0.5 miles'},
+    options:['Choose one...','Greater than 0.5 miles','Less than 0.5 miles','Equal to 0.5 miles'], ch:1846527719},
   {id:'q4', stage:1, num:'Q4', type:'select',
     prompt:'How do you know?',
     hint:'Think about the relationship between the hypotenuse and the legs in any right triangle.',
-    options:['Choose one...','The hypotenuse is always longer than either leg','The angle was steep so it went farther','The plane was moving fast'], correct:'The hypotenuse is always longer than either leg'},
+    options:['Choose one...','The hypotenuse is always longer than either leg','The angle was steep so it went farther','The plane was moving fast'], ch:173942290},
   {id:'q5', stage:1, num:'Q5', type:'trig', unitType:'degrees',
     prompt:'At what angle did the plane descend?',
     context:'The plane dropped 1,390 feet. The horizontal distance covered was 0.5 miles.',
@@ -249,6 +249,10 @@ function qUnlocked(qi) {
   if (p.stage !== q.stage) return true;
   return S[p.id].dismissed;
 }
+function qReachable(qi) {
+  // For nav: any question in an unlocked stage is reachable
+  return stageOk(QS[qi].stage);
+}
 function stageDone(st) {
   for (var i = 0; i < QS.length; i++) { if (QS[i].stage === st && !S[QS[i].id].dismissed) return false; }
   return true;
@@ -275,10 +279,12 @@ function detectUnit(q,s){
   return(nv.length>0&&small)?'miles':'feet';
 }
 
+function _h(s){var v=5381;for(var i=0;i<s.length;i++){v=((v<<5)+v)+s.charCodeAt(i);v=v&v;}return v>>>0;}
+
 // ── ACTIONS ──
 function navTo(qi) {
-  if(qi<0||qi>=QS.length||!qUnlocked(qi))return;
-  if(qi>activeQ){for(var j=activeQ;j<qi;j++){if(qUnlocked(j)&&!S[QS[j].id].dismissed&&!S[QS[j].id].correct)S[QS[j].id].skipped=true;}}
+  if(qi<0||qi>=QS.length)return;
+  if(qi>activeQ){for(var j=activeQ;j<qi;j++){if(!S[QS[j].id].dismissed&&!S[QS[j].id].correct)S[QS[j].id].skipped=true;}}
   S[QS[qi].id].skipped=false;
   activeQ=qi;render();window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -298,7 +304,7 @@ function updField(id,k,v){S[id].fields[k]=v;S[id].result=null;S[id].ratioOk=fals
 function selAns(id,v){S[id].value=v;S[id].correct=false;render();}
 function chkSel(id){
   var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
-  S[id].correct=(S[id].value===q.correct);render();
+  S[id].correct=(_h(S[id].value)===q.ch);render();
 }
 function updCalc(id,val){S[id].calcValue=val;S[id].calcFeedback='';}
 function updCalcUnit(id,val){S[id].calcUnit=val;S[id].calcFeedback='';}
@@ -361,8 +367,9 @@ function checkClearance(id){
   var q=null;for(var i=0;i<QS.length;i++){if(QS[i].id===id){q=QS[i];break;}}
   var s=S[id];var typed=parseFloat(s.calcValue);
   if(isNaN(typed)){s.calcFeedback='err:Enter a number.';render();return;}
-  if(typed>=750&&typed<=1050){s.correct=true;s.calcFeedback='ok';}
-  else if(typed>=600&&typed<=1200){s.calcFeedback='warn:That\'s in the neighborhood but seems off. Clearance = (height at bridge) \u2212 212. Double-check your subtraction.';}
+  var _a=q.bridgeHeight*3+114,_b=q.bridgeHeight*5-10,_c=q.bridgeHeight*3-36,_d=q.bridgeHeight*6-72;
+  if(typed>=_a&&typed<=_b){s.correct=true;s.calcFeedback='ok';}
+  else if(typed>=_c&&typed<=_d){s.calcFeedback='warn:That\'s in the neighborhood but seems off. Clearance = (height at bridge) \u2212 212. Double-check your subtraction.';}
   else{s.calcFeedback='err:That doesn\'t seem right. Clearance = (your Q7 answer) \u2212 212 feet. Try again, or bring your work to your teacher.';}
   render();
 }
@@ -375,8 +382,9 @@ function render(){
     var q=QS[qi];
     if(q.stage!==cs){
       cs=q.stage;
-      if(stageDone(q.stage)){while(qi<QS.length-1&&QS[qi+1].stage===q.stage)qi++;continue;}
-      if(stageOk(q.stage)){var sh=document.createElement('div');sh.className='sh v';sh.innerHTML='<h2>'+STAGES[q.stage].t+'</h2><p>'+STAGES[q.stage].d+'</p>';m.appendChild(sh);}
+      var stageHasActive=false;for(var k=0;k<QS.length;k++){if(QS[k].stage===q.stage&&k===activeQ){stageHasActive=true;break;}}
+      if(stageDone(q.stage)&&!stageHasActive){while(qi<QS.length-1&&QS[qi+1].stage===q.stage)qi++;continue;}
+      if(stageHasActive||stageOk(q.stage)){var sh=document.createElement('div');sh.className='sh v';sh.innerHTML='<h2>'+STAGES[q.stage].t+'</h2><p>'+STAGES[q.stage].d+'</p>';m.appendChild(sh);}
     }
     var s=S[q.id];var card=document.createElement('div');
     if(s.dismissed){
@@ -386,7 +394,7 @@ function render(){
       card.className='card skipped';card.id='c-'+q.id;
       card.innerHTML='<div class="qn">'+q.num+'<span class="skip-tag">\u25CB Skipped \u2014 tap to return</span></div>';
       (function(idx){card.addEventListener('click',function(){navTo(idx);});})(qi);
-    }else if(qi===activeQ&&qUnlocked(qi)){
+    }else if(qi===activeQ){
       card.className='card v';card.id='c-'+q.id;
       var h='<div class="qn">'+q.num+'</div><div class="qp">'+q.prompt+'</div>';
       if(q.type==='trig')h+=renderTrig(q,s,qi);
@@ -510,9 +518,8 @@ function renderDots(){
     if(s.dismissed){dot.classList.add('done');}
     else if(s.skipped){dot.classList.add('skip');}
     else if(i===activeQ){dot.classList.add('active');}
-    else if(!qUnlocked(i)){dot.classList.add('locked');}
     dot.textContent=(i+1);
-    (function(idx){dot.addEventListener('click',function(){if(qUnlocked(idx))navTo(idx);});})(i);
+    (function(idx){dot.addEventListener('click',function(){navTo(idx);});})(i);
     c.appendChild(dot);
   }
 }
@@ -520,22 +527,30 @@ function renderDots(){
 // ── FLIGHT TRACK ──
 function renderTrack(){
   var t=document.getElementById('ft');t.innerHTML='';
-  var done=0;for(var i=0;i<QS.length;i++){if(S[QS[i].id].dismissed)done++;}
-  var ai=Math.min(Math.floor(done*NODES.length/QS.length),NODES.length-1);
+  // Find which node the active question belongs to
+  var activeNode=0;
+  for(var i=NODES.length-1;i>=0;i--){if(activeQ>=NODE_Q_MAP[i]){activeNode=i;break;}}
   var nodeSkipped=[];
   for(var i=0;i<NODES.length;i++){var startQ=NODE_Q_MAP[i];var endQ=(i<NODES.length-1)?NODE_Q_MAP[i+1]:QS.length;var hs=false;for(var j=startQ;j<endQ;j++){if(S[QS[j].id].skipped){hs=true;break;}}nodeSkipped.push(hs);}
+  // Check which nodes are fully complete
+  var nodeDone=[];
+  for(var i=0;i<NODES.length;i++){var startQ=NODE_Q_MAP[i];var endQ=(i<NODES.length-1)?NODE_Q_MAP[i+1]:QS.length;var allDone=true;for(var j=startQ;j<endQ;j++){if(!S[QS[j].id].dismissed){allDone=false;break;}}nodeDone.push(allDone);}
   for(var i=0;i<NODES.length;i++){
-    if(i>0){var ln=document.createElement('div');ln.className='fl'+(i<=ai?' c':'');t.appendChild(ln);}
-    var n=document.createElement('div');var cls='fn';if(i<ai)cls+=' c';else if(i===ai)cls+=' a';if(nodeSkipped[i])cls+=' sk';n.className=cls;
+    if(i>0){var ln=document.createElement('div');ln.className='fl'+(nodeDone[i-1]?' c':'');t.appendChild(ln);}
+    var n=document.createElement('div');var cls='fn';
+    if(nodeDone[i])cls+=' c';
+    else if(i===activeNode)cls+=' a';
+    if(nodeSkipped[i])cls+=' sk';
+    n.className=cls;
     n.innerHTML='<div class="d"></div><div class="l">'+NODES[i]+'</div>';
-    (function(idx){n.addEventListener('click',function(){var tq=NODE_Q_MAP[idx];for(var j=tq;j<QS.length;j++){if(qUnlocked(j)&&!S[QS[j].id].dismissed){navTo(j);return;}}for(var j=tq;j>=0;j--){if(qUnlocked(j)){navTo(j);return;}}});})(i);
+    (function(idx){n.addEventListener('click',function(){var tq=NODE_Q_MAP[idx];for(var j=tq;j<QS.length;j++){if(!S[QS[j].id].dismissed){navTo(j);return;}}navTo(tq);});})(i);
     t.appendChild(n);
   }
 }
 
 // ── INIT ──
 init();
-for(var i=0;i<QS.length;i++){if(!S[QS[i].id].dismissed&&qUnlocked(i)){activeQ=i;break;}}
+for(var i=0;i<QS.length;i++){if(!S[QS[i].id].dismissed){activeQ=i;break;}}
 render();
 </script>
 </body>
