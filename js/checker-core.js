@@ -204,12 +204,23 @@ function render(){
   }
 }
 
+function labelHint(qid){
+  var c=(typeof LABQ!=='undefined')?LABQ[qid]:null;
+  var base='Find the square corner (the right angle) first \u2014 the hypotenuse is always the side directly across from it. The other two sides are the legs.';
+  if(!c)return base;
+  var th=(c.type==='elev')
+    ? ' The angle here is measured up from the ground, so \u03B8 sits inside the triangle, at the base.'
+    : ' This is an angle of depression \u2014 measured down from the horizontal at the top \u2014 so \u03B8 sits outside the triangle, up top.';
+  return base+th;
+}
 function renderTrig(q,s,qi){
   var h='';
   // Step 1 - LABEL THE TRIANGLE (drag & drop)
   h+='<div class="step show"><div class="step-label">Step 1 \u2014 Set Up the Triangle</div><div class="step-text">'+q.context+'</div>';
   if(!s.labelOk){
     h+='<div class="lab-wrap" id="lab-'+q.id+'"></div>';
+    if(s.hintsShown.label){h+='<div class="hint-text" style="margin-top:6px">'+labelHint(q.id)+'</div>';}
+    else{h+='<div style="text-align:center;margin-top:8px"><button class="btn-hint" onclick="showHint(\''+q.id+'\',\'label\')">Need a hint?</button></div>';}
   }else{
     h+=labStatic(q);
     h+='<div class="lab-done-note">\u2713 Triangle labeled \u2014 use it as your reference below.</div>';
