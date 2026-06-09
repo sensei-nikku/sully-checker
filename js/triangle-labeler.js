@@ -27,32 +27,32 @@ function lSVG(c,opts){
   opts=opts||{};var g=lCen(c);
   var s='<svg viewBox="0 0 '+VBW+' '+VBH+'" preserveAspectRatio="xMidYMid meet">';
   // horizontal sight lines at acute vertices
-  [c.LOW,c.HIGH].forEach(function(V){s+='<line x1="'+(V[0]-46)+'" y1="'+V[1]+'" x2="'+(V[0]+46)+'" y2="'+V[1]+'" stroke="#B8B0A2" stroke-width="1.5" stroke-dasharray="5 4"/>';});
+  [c.LOW,c.HIGH].forEach(function(V){s+='<line x1="'+(V[0]-46)+'" y1="'+V[1]+'" x2="'+(V[0]+46)+'" y2="'+V[1]+'" stroke-width="1.5" stroke-dasharray="5 4" style="stroke:var(--muted)"/>';});
   // triangle
-  s+='<polygon points="'+c.R[0]+','+c.R[1]+' '+c.LOW[0]+','+c.LOW[1]+' '+c.HIGH[0]+','+c.HIGH[1]+'" fill="#FFFFFF" stroke="#2C2A26" stroke-width="2.5" stroke-linejoin="round"/>';
+  s+='<polygon points="'+c.R[0]+','+c.R[1]+' '+c.LOW[0]+','+c.LOW[1]+' '+c.HIGH[0]+','+c.HIGH[1]+'" stroke-width="2.5" stroke-linejoin="round" style="fill:var(--bg);stroke:var(--text)"/>';
   // right-angle square at R
   var ul=lU(c.R,c.LOW),uh=lU(c.R,c.HIGH);
   var qp=[c.R[0]+ul[0]*14,c.R[1]+ul[1]*14],pp=[c.R[0]+uh[0]*14,c.R[1]+uh[1]*14],fp=[qp[0]+pp[0]-c.R[0],qp[1]+pp[1]-c.R[1]];
-  s+='<path d="M '+qp[0]+' '+qp[1]+' L '+fp[0]+' '+fp[1]+' L '+pp[0]+' '+pp[1]+'" fill="none" stroke="#2C2A26" stroke-width="2"/>';
+  s+='<path d="M '+qp[0]+' '+qp[1]+' L '+fp[0]+' '+fp[1]+' L '+pp[0]+' '+pp[1]+'" stroke-width="2" style="fill:none;stroke:var(--text)"/>';
   if(opts.arc){ // draw the angle marker at its correct spot
     if(c.type==='elev'){ // interior arc at LOW
       var V=c.LOW,ur=lU(V,c.R),uH=lU(V,c.HIGH);
       var pr=[V[0]+ur[0]*24,V[1]+ur[1]*24],pa=[V[0]+uH[0]*24,V[1]+uH[1]*24];
       var cr=(pr[0]-V[0])*(pa[1]-V[1])-(pr[1]-V[1])*(pa[0]-V[0]),sw=cr>0?1:0;
-      s+='<path d="M '+V[0]+' '+V[1]+' L '+pr[0]+' '+pr[1]+' A 24 24 0 0 '+sw+' '+pa[0]+' '+pa[1]+' Z" fill="#1B6B93" fill-opacity="0.20" stroke="#1B6B93" stroke-width="2"/>';
+      s+='<path d="M '+V[0]+' '+V[1]+' L '+pr[0]+' '+pr[1]+' A 24 24 0 0 '+sw+' '+pa[0]+' '+pa[1]+' Z" stroke-width="2" style="fill:var(--accent);fill-opacity:.2;stroke:var(--accent)"/>';
     } else { // depression: outside arc at HIGH between horizontal(away from triangle) and hyp
       var V=c.HIGH,uH2=lU(V,c.LOW); // ray toward LOW along hypotenuse
       var horizOut=(g[0]>V[0])?-1:1; // horizontal points away from centroid
       var pr=[V[0]+horizOut*24,V[1]];
       var pa=[V[0]+uH2[0]*24,V[1]+uH2[1]*24];
       var cr=(pr[0]-V[0])*(pa[1]-V[1])-(pr[1]-V[1])*(pa[0]-V[0]),sw=cr>0?1:0;
-      s+='<path d="M '+V[0]+' '+V[1]+' L '+pr[0]+' '+pr[1]+' A 24 24 0 0 '+sw+' '+pa[0]+' '+pa[1]+' Z" fill="#1B6B93" fill-opacity="0.20" stroke="#1B6B93" stroke-width="2"/>';
+      s+='<path d="M '+V[0]+' '+V[1]+' L '+pr[0]+' '+pr[1]+' A 24 24 0 0 '+sw+' '+pa[0]+' '+pa[1]+' Z" stroke-width="2" style="fill:var(--accent);fill-opacity:.2;stroke:var(--accent)"/>';
     }
   }
   if(opts.labels){
     var rel=LABREL[c.ratio].rel,b=lBoxes(c);
-    rel.forEach(function(k){var p=b[k];s+='<text x="'+p[0]+'" y="'+(p[1]+4)+'" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" fill="#3A7D44" text-anchor="middle">'+LABNM[k]+'</text>';});
-    var tp=b[lThetaBox(c)];s+='<text x="'+tp[0]+'" y="'+(tp[1]+5)+'" font-family="DM Sans,sans-serif" font-size="15" font-weight="700" fill="#1B6B93" text-anchor="middle">\u03B8</text>';
+    rel.forEach(function(k){var p=b[k];s+='<text x="'+p[0]+'" y="'+(p[1]+4)+'" font-family="DM Sans,sans-serif" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">'+LABNM[k]+'</text>';});
+    var tp=b[lThetaBox(c)];s+='<text x="'+tp[0]+'" y="'+(tp[1]+5)+'" font-family="DM Sans,sans-serif" font-size="15" font-weight="700" text-anchor="middle" style="fill:var(--accent)">\u03B8</text>';
   }
   s+='</svg>';return s;
 }
