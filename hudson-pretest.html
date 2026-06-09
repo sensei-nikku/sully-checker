@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trigonometry Pre-Test — Answer Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-left"><h1>Trigonometry Pre-Test</h1><div class="sub">Readiness Check &mdash; Answer Checker</div></div>
+  <div class="hdr-dots" id="hdrDots"></div>
+</header>
+<main class="main" id="main"></main>
+<script>
+var QS=[
+ {id:'p1',stage:0,num:'Q1',type:'trig',unitType:'feet',
+   prompt:'How high off the ground is the balloon?',
+   context:'A helium balloon is tied by a 14-foot string to a rock on the ground. The string makes a 58\u00B0 angle with the ground.',
+   sketch:'The taut string is the hypotenuse (14 ft). The 58\u00B0 angle sits at the ground. The balloon\u2019s height is the opposite side \u2014 that\u2019s your unknown.',
+   expected:{x:'opp',angle:[57,59],hyp:[[13.7,14.3]],adj:null,opp:null,ratios:['sin']}},
+ {id:'p2',stage:0,num:'Q2',type:'trig',unitType:'degrees',
+   prompt:'At what angle must you look up to see the tip of the lighthouse?',
+   context:'You are floating 260 feet from the Little Sable Point lighthouse, which stands 107 feet tall.',
+   sketch:'The 260 ft is the horizontal distance (adjacent). The 107 ft height is the opposite side. You are solving for the angle, so you will need an inverse trig function.',
+   expected:{x:'angle',opp:[[105,109]],adj:[[256,264]],hyp:null,angle:null,ratios:['tan']}},
+ {id:'p3',stage:0,num:'Q3',type:'trig',unitType:'feet',
+   prompt:'How far must the dog walk to reach the donut?',
+   context:'Ted stands on a balcony, eye level 16 feet above the ground, and spots his dog below at a 40\u00B0 angle of depression. He drops a donut straight down through the balcony floor \u2014 it lands directly beneath him, and the dog must walk over to it.',
+   sketch:'The 40\u00B0 angle of depression at the top equals the angle at the dog (alternate interior angles). Ted\u2019s 16 ft height is the opposite side. The dog\u2019s walk is the adjacent side \u2014 your unknown, sitting on the bottom of the fraction.',
+   expected:{x:'adj',angle:[39,41],opp:[[15.6,16.4]],hyp:null,adj:null,ratios:['tan']}},
+ {id:'p4',stage:0,num:'Q4',type:'trig',unitType:'degrees',
+   prompt:'At what angle did Ducky take the shot?',
+   context:'Ducky aims at a clay pigeon launched straight up from a spot 25 feet away. He shoots it at its apex, when it is 50 feet from him in a straight line.',
+   sketch:'The 25 ft to the launcher is the adjacent side. The 50 ft straight-line distance to the apex is the hypotenuse. You are solving for the angle \u2014 use an inverse trig function.',
+   expected:{x:'angle',adj:[[24,26]],hyp:[[49,51]],opp:null,angle:null,ratios:['cos']}}
+];
+var NODES=[];var NODE_Q_MAP=[];
+var STAGES=[{t:'Trigonometry Pre-Test',d:'Set up each triangle, then solve. Four problems.'}];
+var LABQ={
+ p1:{R:[255,175],LOW:[70,175],HIGH:[255,60],type:'elev',ratio:'sin'},
+ p2:{R:[85,175],LOW:[270,175],HIGH:[85,60],type:'elev',ratio:'tan'},
+ p3:{R:[255,60],LOW:[255,175],HIGH:[70,60],type:'depr',ratio:'tan'},
+ p4:{R:[255,175],LOW:[70,175],HIGH:[255,60],type:'elev',ratio:'cos'}
+};
+var LAB_CORRECT_SLOT={p1:1,p2:2,p3:0,p4:3};
+</script>
+<script src="../js/checker-core.js"></script>
+<script src="../js/triangle-labeler.js"></script>
+<script>initChecker();</script>
+</body>
+</html>

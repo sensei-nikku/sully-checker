@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Miracle on the Hudson — Answer Checker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-left"><h1>Miracle on the Hudson</h1><div class="sub">Trig Project &mdash; Answer Checker</div></div>
+  <div class="hdr-dots" id="hdrDots"></div>
+</header>
+<div class="fp"><div class="fp-hint">Tap a point to jump between questions</div><div class="ft" id="ft"></div></div>
+<main class="main" id="main"></main>
+<script>
+var NODES = ['Bird Strike','Max Alt','Decision','GW Bridge','Landing'];
+var NODE_Q_MAP = [0, 1, 2, 4, 6];
+
+var STAGES = [
+  {t:'Stage 1 \u2014 The Ascent', d:'LaGuardia \u2192 Bird Strike \u2192 Max Altitude'},
+  {t:'Stage 2 \u2014 The Descent', d:'Max Altitude \u2192 Decision Point'},
+  {t:'Stage 3 \u2014 The Approach', d:'GW Bridge \u2192 Hudson River Landing'}
+];
+
+var QS = [
+  {id:'q1', stage:0, num:'Q1', type:'trig', unitType:'length',
+    prompt:'Calculate the plane\'s height above the ground when it hit the birds.',
+    context:'The plane was ascending at an angle of 7.7\u00B0 and had traveled 4 miles along its flight path when it struck the birds.',
+    sketch:'The plane\'s path is the hypotenuse. The ground is the adjacent side. The height is the opposite side. The 7.7\u00B0 angle is at the ground.',
+    expected:{x:'opp', angle:[7.5,7.9], hyp:[[3.8,4.2],[20900,21400]], adj:null, opp:null, ratios:['sin']}},
+  {id:'q2', stage:0, num:'Q2', type:'trig', unitType:'length',
+    prompt:'How far could the plane travel during the 19-second climb to max altitude?',
+    context:'After the bird strike, the plane continued to climb at 2\u00B0 and reached a maximum altitude of 3,060 feet.',
+    sketch:'First: subtract your Q1 answer from 3,060 to find how much higher the plane climbed. That extra altitude is the opposite side. The 2\u00B0 angle is at the base. The distance traveled is the hypotenuse \u2014 that\'s your unknown.',
+    expected:{x:'hyp', angle:[1.8,2.2], opp:[[150,320]], adj:null, hyp:null, ratios:['sin']}},
+  {id:'q3', stage:1, num:'Q3', type:'select',
+    prompt:'The plane dropped 1,390 feet while covering 0.5 miles horizontally. Was the actual distance traveled greater than, less than, or equal to 0.5 miles?',
+    hint:'The horizontal distance is one leg of the right triangle. The actual flight path is the hypotenuse. In any right triangle, which side is always the longest?',
+    options:['Choose one...','Greater than 0.5 miles','Less than 0.5 miles','Equal to 0.5 miles'], ch:1846527719},
+  {id:'q4', stage:1, num:'Q4', type:'select',
+    prompt:'How do you know?',
+    hint:'Think about the relationship between the hypotenuse and the legs in any right triangle.',
+    options:['Choose one...','The hypotenuse is always longer than either leg','The angle was steep so it went farther','The plane was moving fast'], ch:173942290},
+  {id:'q5', stage:1, num:'Q5', type:'trig', unitType:'degrees',
+    prompt:'At what angle did the plane descend?',
+    context:'The plane dropped 1,390 feet. The horizontal distance covered was 0.5 miles.',
+    sketch:'The altitude drop (1,390 ft) is the opposite side. The horizontal distance is the adjacent side \u2014 convert 0.5 miles to feet first! The descent angle is what you\'re solving for.',
+    expected:{x:'angle', opp:[[1380,1400]], adj:[[2620,2680]], hyp:null, angle:null, ratios:['tan']}},
+  {id:'q6', stage:2, num:'Q6', type:'trig', unitType:'length',
+    prompt:'The airplane leveled off at a 3\u00B0 descent angle for the next two miles. How many feet did it drop in altitude?',
+    context:'Descent angle is 3\u00B0. Horizontal distance is 2 miles.',
+    sketch:'The horizontal distance is the adjacent side \u2014 convert to feet! The altitude drop is the opposite side (your unknown). The 3\u00B0 angle is the descent angle.',
+    expected:{x:'opp', angle:[2.8,3.2], adj:[[1.8,2.2],[10400,10700]], hyp:null, opp:null, ratios:['tan']}},
+  {id:'q7', stage:2, num:'Q7', type:'trig', unitType:'length',
+    prompt:'The GW Bridge is 6 miles from where the plane landed. How high was the plane when it passed over the bridge?',
+    context:'The plane descended at 2\u00B0 from the GW Bridge to its landing on the Hudson (altitude = 0 ft). Horizontal distance: 6 miles.',
+    sketch:'Work backwards from landing. The horizontal distance (6 miles) is the adjacent side \u2014 convert to feet! The height at the bridge is the opposite side (your unknown). The 2\u00B0 descent angle connects them.',
+    expected:{x:'opp', angle:[1.8,2.2], adj:[[5.8,6.2],[31400,32000]], hyp:null, opp:null, ratios:['tan']}},
+  {id:'q8', stage:2, num:'Q8', type:'clearance',
+    prompt:'The George Washington Bridge is 212 feet tall. By how many feet did the plane clear the bridge?',
+    hint:'Clearance = (your Q7 answer) \u2212 212 feet.',
+    bridgeHeight:212, atcReport:900}
+];
+var LABQ={
+ q1:{R:[255,175],LOW:[70,175],HIGH:[255,60],type:'elev',ratio:'sin'},
+ q2:{R:[85,175],LOW:[270,175],HIGH:[85,60],type:'elev',ratio:'sin'},
+ q5:{R:[255,60],LOW:[255,175],HIGH:[70,60],type:'depr',ratio:'tan'},
+ q6:{R:[85,60],LOW:[85,175],HIGH:[270,60],type:'depr',ratio:'tan'},
+ q7:{R:[270,175],LOW:[85,175],HIGH:[270,60],type:'depr',ratio:'tan'}
+};
+var LAB_CORRECT_SLOT={q1:1,q2:2,q5:0,q6:3,q7:1};
+</script>
+<script src="../js/checker-core.js"></script>
+<script src="../js/triangle-labeler.js"></script>
+<script>initChecker();</script>
+</body>
+</html>
