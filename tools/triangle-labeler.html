@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triangle Labeler — Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-left"><h1>Triangle Labeler</h1><div class="sub">Opposite &middot; Adjacent &middot; Hypotenuse &middot; &theta;</div></div>
+</header>
+<main class="main" id="main"></main>
+<script src="../js/triangle-labeler.js"></script>
+<script>
+var LABQ={
+ t1:{R:[255,175],LOW:[70,175],HIGH:[255,60],type:'elev',ratio:'sin'},
+ t2:{R:[85,175],LOW:[270,175],HIGH:[85,60],type:'elev',ratio:'cos'},
+ t3:{R:[255,60],LOW:[255,175],HIGH:[70,60],type:'depr',ratio:'tan'},
+ t4:{R:[85,60],LOW:[85,175],HIGH:[270,60],type:'depr',ratio:'tan'},
+ t5:{R:[270,175],LOW:[85,175],HIGH:[270,60],type:'depr',ratio:'sin'},
+ t6:{R:[255,175],LOW:[70,175],HIGH:[255,60],type:'elev',ratio:'tan'}
+};
+var LAB_CORRECT_SLOT={t1:1,t2:2,t3:0,t4:3,t5:1,t6:2};
+var PRACTICE=['t1','t2','t3','t4','t5','t6'];
+var S={},QS=PRACTICE.map(function(id){return {id:id};}),idx=0;
+function seed(){PRACTICE.forEach(function(id){S[id]={oriOk:false,labelOk:false,tri:{placed:{}},step:0};});}
+seed();
+function render(){
+  var m=document.getElementById('main');
+  if(idx>=PRACTICE.length){
+    m.innerHTML='<div class="card v" style="text-align:center"><div class="qp">\u2713 All '+PRACTICE.length+' triangles labeled \u2014 nice work.</div><button class="btn btn-go" onclick="restart()">Start over</button></div>';
+    return;
+  }
+  var id=PRACTICE[idx];
+  m.innerHTML='<div class="card v"><div class="qn">Triangle '+(idx+1)+' of '+PRACTICE.length+'</div><div class="lab-wrap" id="lab-'+id+'"></div></div>';
+  if(!S[id].oriOk)mountOrientation(id);else mountLabeler(id);
+}
+function onLabelComplete(id){S[id].labelOk=true;setTimeout(function(){idx++;render();},700);}
+function restart(){idx=0;seed();render();}
+render();
+</script>
+</body>
+</html>
